@@ -18,7 +18,7 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind((HOST, PORT))  # Sets the server address to the HOST and PORT variables.
 server.listen()  # Listening for the client server's input.
 
-# Stores clients into a list.
+# Stores clients into a dictionary.
 clients = {}
 bullets = []
 lock = threading.Lock()
@@ -95,7 +95,7 @@ def client_handling(connection, addr, client_id):
                             player["hp"] -= 10
                             if player["hp"] < 0:
                                 player["hp"] = 0
-                                
+
                             print(f"💥 Player {player["id"]} hit by Player {bullet["owner_id"]}")
                             bullets.remove(bullet)
                             break

@@ -7,9 +7,13 @@ import time
 HOST = "127.0.0.1"
 PORT = 5592
 
+# Opens the server for the client.
 client_player = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_player.settimeout(5.0)
 
+# Takes 5 seconds for program to develop and connect.
+client_player.settimeout(5.0) 
+ 
+# Attempts to connect, and closes program if connection failed.
 try:
     client_player.connect((HOST, PORT))
 except Exception as error:
@@ -39,6 +43,7 @@ my_id = json.loads(data)["id"]
 print(f"Connected as player ID {my_id}")
 client_player.settimeout(0.1)
 
+# Initialize Pygame.
 pygame.init()
 
 BORDER_THICKNESS = 10
@@ -145,22 +150,20 @@ def player_fire(mouse_x, mouse_y):
         print("Error sending bullet:", error)
 
 class HealthBar():
-    def __init__(self, x, y, w, h, max_hp):
-        self.x = x
-        self.y = y
+    def __init__(self, w, h, max_hp):
         self.w = w
         self.h = h
         self.hp = max_hp
         self.max_hp = max_hp
 
-    def draw(self, surface):
-        # Background Red.
-        pygame.draw.rect(surface, "red", (self.x, self.y, self.w, self.h))
-        # Forground Green representing full health.
+    def draw(self, surface, x, y):
         ratio = max(self.hp / self.max_hp, 0)
-        pygame.draw.rect(surface, "green", (self.x, self.y, self.w * ratio, self.h))
+        # Background Red.
+        pygame.draw.rect(surface, "red", (x, y, self.w, self.h))
+        # Forground Green representing full health.
+        pygame.draw.rect(surface, "green", (x, y, self.w * ratio, self.h))
 
-player_health = HealthBar(10, 10, 200, 40, 30)
+player_health = HealthBar(w=45, h=7, max_hp=30)
 
 
 running = True
@@ -194,28 +197,25 @@ while running:
         pygame.draw.rect(screen, (255, 0, 0), 
                          (player["x"], player["y"], TANK_WIDTH, TANK_HEIGHT))
         
-        hp = player.get("hp", 30)
-        ratio = hp - 10
-        bar_width = TANK_WIDTH + 10
-        bar_height = 5
-        bar_x = player["x"]
-        bar_y = player["y"] - 8
-        pygame.draw.rect(screen, ("Red"), (bar_x, bar_y, bar_width, bar_height))
-        pygame.draw.rect(screen, ("Green"), (bar_x, bar_y, bar_width * ratio, bar_height))
+        other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
+        other_health.hp = player.get("hp", 30)
+        other_health.draw(screen, player["x"], player["y"] +36)
 
     # Draw current player.
     pygame.draw.rect(screen, (0,225,0), 
                      (tank_player["x"], tank_player["y"], TANK_WIDTH, TANK_HEIGHT))
     
+    player_health.draw(screen, tank_player["x"], tank_player["y"] + 35)
+
     for b in bullets:
         pygame.draw.circle(screen, ("Black"), (int(b["x"]), int(b["y"])), 5)
 
 
     cooldown_ratio = min((time.time() - last_shot_time) / shot_cooldown, 1.0)
     bar_width = int(TANK_WIDTH * cooldown_ratio)
-    bar_height = 3
+    bar_height = 5
     bar_x = tank_player["x"]
-    bar_y = tank_player["y"] + 38
+    bar_y = tank_player["y"] + 40
 
     pygame.draw.rect(screen, ("Gray"), (bar_x, bar_y, TANK_WIDTH , bar_height ))
     pygame.draw.rect(screen, ("Dark Green"), (bar_x, bar_y, bar_width, bar_height))
@@ -223,7 +223,6 @@ while running:
 
 
 
-    player_health.draw(screen)
     pygame.display.flip()
 
     # Limits to 60fps
