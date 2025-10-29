@@ -3,6 +3,7 @@ import threading
 import pygame 
 import json
 import time
+import random
 
 HOST = "127.0.0.1"
 PORT = 5592
@@ -57,9 +58,16 @@ pygame.display.set_caption("Multiplayer Tank Game")
 clock = pygame.time.Clock()
 dt = 0
 
+# Images.
+explosion_img = pygame.image.load("Images/tank_explosion.jpg").convert_alpha()
+EXPLOSION_SIZE = (50, 50)
+explosion_img = pygame.transform.scale(explosion_img, EXPLOSION_SIZE)
+EXPLOSION_DURATION = 0.5
+
 tank_player = {"x": 250, "y": 200}
 others = []
 bullets = []
+explosions = []
 cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_CROSSHAIR) 
 
 last_shot_time = 0
@@ -199,13 +207,12 @@ while running:
         
         other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
         other_health.hp = player.get("hp", 30)
-        other_health.draw(screen, player["x"], player["y"] +36)
+        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT + 5)
 
     # Draw current player.
     pygame.draw.rect(screen, (0,225,0), 
                      (tank_player["x"], tank_player["y"], TANK_WIDTH, TANK_HEIGHT))
-    
-    player_health.draw(screen, tank_player["x"], tank_player["y"] + 35)
+    player_health.draw(screen, tank_player["x"], tank_player["y"] + TANK_WIDTH + 5)
 
     for b in bullets:
         pygame.draw.circle(screen, ("Black"), (int(b["x"]), int(b["y"])), 5)
@@ -220,9 +227,37 @@ while running:
     pygame.draw.rect(screen, ("Gray"), (bar_x, bar_y, TANK_WIDTH , bar_height ))
     pygame.draw.rect(screen, ("Dark Green"), (bar_x, bar_y, bar_width, bar_height))
 
+    # Draws Explosion
+    current_time = time.time()
+    for exp in explosions[:]:
+        if current_time - exp["time"] > EXPLOSION_DURATION:
+            explosions.remove(exp)
+        else:
+            screen.blit(explosion_img, (exp["x"], exp["y"]))
+
+    # Check Health
+    if player_health.hp <= 0:
+        screen.blit(explosion_img, (tank_player["x"] - 25, 
+                                    tank_player["y"] - 25))
+        
+        pygame.time.delay(1500)
+        pygame.display.flip()
+
+        player_health.hp = player_health.max_hp
+        tank_player["x"] = random.randint(50, WINDOW_WIDTH - 50)
+        tank_player["y"] = random.randint(50, WINDOW_HEIGHT - 50)
 
 
 
+
+        # explosions.append({
+        #     "x": tank_player["x"] + TANK_WIDTH//2 - EXPLOSION_SIZE[0]//2,
+        #     "y": tank_player["y"] + TANK_HEIGHT//2 - EXPLOSION_SIZE[1]//2,
+        #     "time": time.time()
+        # })
+
+        # tank_player["x"], tank_player["y"] = 250, 200
+        # player_health.hp = player_health.max_hp
     pygame.display.flip()
 
     # Limits to 60fps

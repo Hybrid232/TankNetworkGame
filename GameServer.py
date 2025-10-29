@@ -2,6 +2,7 @@ import socket
 import threading
 import json
 import time
+import random
 
 # Host and Port numbers.
 HOST = "127.0.0.1"
@@ -85,7 +86,8 @@ def client_handling(connection, addr, client_id):
                         bullets.remove(bullet)
                         continue
                     
-
+#----------------------------------------------------------------------------------------#
+                    # Bullet hit's player functions.
                     for c, player in clients.items():
                         if player["id"] == bullet["owner_id"]:
                             continue
@@ -98,6 +100,12 @@ def client_handling(connection, addr, client_id):
 
                             print(f"💥 Player {player["id"]} hit by Player {bullet["owner_id"]}")
                             bullets.remove(bullet)
+
+                            # Respawns player to full health and random position.
+                            if player["hp"] <= 0:
+                                player["x"] = random.randint(50, WINDOW_WIDTH - 50)
+                                player["y"] = random.randint(50, WINDOW_HEIGHT - 50)
+                                player["hp"] = 30
                             break
             with lock:
                  message = {"players": list(clients.values()), "bullets": bullets}
