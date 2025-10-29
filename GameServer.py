@@ -127,6 +127,8 @@ def client_handling(connection, addr, client_id):
         connection.close()
         print(f"Disconnected from {addr}")
 
+
+# 
 def accept_clients():
     global next_id
     # Status address messages.

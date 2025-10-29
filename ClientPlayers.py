@@ -231,7 +231,7 @@ while running:
         # Draw Health Bar for other players.
         other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
         other_health.hp = player.get("hp", 30)
-        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT + 5)
+        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 45)
 
     # Draw current player.
     pygame.draw.rect(screen, (0,225,0), 
