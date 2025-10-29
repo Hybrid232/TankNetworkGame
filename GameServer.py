@@ -101,7 +101,7 @@ def client_handling(connection, addr, client_id):
                             print(f"💥 Player {player["id"]} hit by Player {bullet["owner_id"]}")
                             bullets.remove(bullet)
 
-                            # Respawns player to full health and random position.
+                            # Re-spawn player to full health and random position.
                             if player["hp"] <= 0:
                                 player["x"] = random.randint(50, WINDOW_WIDTH - 50)
                                 player["y"] = random.randint(50, WINDOW_HEIGHT - 50)
