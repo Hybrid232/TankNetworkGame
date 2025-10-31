@@ -6,7 +6,7 @@ import time
 import random
 
 # HOST = "127.0.0.1"
-#BYU-I Lan Server: 10.244.53.130
+# BYU-I Lan Server: 10.244.53.130
 HOST = input("Enter the server IP to connect (LAN IP of host): ").strip()
 PORT = 5592
 
