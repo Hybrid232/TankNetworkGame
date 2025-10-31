@@ -5,7 +5,9 @@ import json
 import time
 import random
 
-HOST = "127.0.0.1"
+# HOST = "127.0.0.1"
+#BYU-I Lan Server: 10.244.53.130
+HOST = input("Enter the server IP to connect (LAN IP of host): ").strip()
 PORT = 5592
 
 # Opens the server for the client.
@@ -75,16 +77,21 @@ tank_player = {"x": 250, "y": 200}
 others = []
 bullets = []
 explosions = []
+walls = [
+    {"x": 200, "y": 150, "w": 100, "h": 20},
+    {"x": 400, "y": 300, "w": 20, "h": 100}
+]
 
 # Shooting Cool down Variables.
 last_shot_time = 0
 shot_cool_down = 1
+last_respawn_time = 0
 
 #------------------------------------------------------------------------------
 buffer = ""
 # Receives the information from the server to display for the Clients.
 def receive_thread():
-    global others, bullets, buffer
+    global others, bullets, buffer, walls
     while True:
         try:
             data = client_player.recv(4096).decode()
@@ -102,9 +109,25 @@ def receive_thread():
                    
                     for p in msg.get("players", []):
                         if p.get("id") == my_id:
+                            tank_player["x"] = lerp(tank_player["x"], p["x"], 0.2) 
+                            tank_player["y"] = lerp(tank_player["y"], p["y"], 0.2)
                             player_health.hp = p.get("hp", 30)
+
+                        else:
+                            found = False
+                            for o in others:
+                                if o["id"] == p["id"]:
+                                    o["x"], o["y"], o["hp"] = \
+                                    p["x"], p["y"], p["hp"]
+                                    found = True
+                                    break
+                                if not found:
+                                    others.append(p) 
                     
                     bullets = msg.get("bullets", [])
+                    walls = msg.get("walls", [])
+                    explosions = msg.get("explosions", [])
+
                 except json.JSONDecodeError as error:
                     print(f"JSON error in receive_thread function: \
                            {error}, line={line}")
@@ -117,23 +140,39 @@ def receive_thread():
 
 threading.Thread(target=receive_thread, daemon=True).start()
 
+def lerp(a, b, t):
+    return a + (b - a) * t
+
 # Player Movement.-------------------------------------------------------------
 def player_movement():
+    dx = 0
+    dy = 0
+    player_speed = 150
+
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
-        tank_player["y"] -= 150 * dt
+        dy = -player_speed * dt
     if keys[pygame.K_s]:
-        tank_player["y"] += 150 * dt
+        dy = player_speed * dt
     if keys[pygame.K_d]:
-        tank_player["x"] += 150 * dt
+        dx = player_speed * dt
     if keys[pygame.K_a]:
-        tank_player["x"] -= 150 * dt
+        dx = -player_speed * dt
 
     # Keeps player inside the border.
     tank_player["x"] = max(BORDER_THICKNESS, min(tank_player["x"],
                            WINDOW_WIDTH - BORDER_THICKNESS - TANK_WIDTH))
     tank_player["y"] = max(BORDER_THICKNESS, min(tank_player["y"], 
                            WINDOW_HEIGHT - BORDER_THICKNESS - TANK_HEIGHT))
+
+    # Check for collision for X movement.
+    if not check_collision(tank_player["x"] + dx, tank_player["y"]):
+        tank_player["x"] += dx
+
+    # Check collision for Y movement.
+    if not check_collision(tank_player["x"], tank_player["y"] + dy):
+        tank_player["y"] += dy
+
 
 # Player fire function.--------------------------------------------------------
 def player_fire(mouse_x, mouse_y):
@@ -194,6 +233,23 @@ class HealthBar():
 player_health = HealthBar(w=45, h=7, max_hp=30)
 
 #------------------------------------------------------------------------------
+# Wall Collision
+def check_collision(x, y):
+    tank_rect = pygame.Rect(x, y, TANK_WIDTH, TANK_HEIGHT)
+    
+    for wall in walls:
+        wall_rect= pygame.Rect(wall["x"], wall["y"], wall["w"], wall["h"])
+        if tank_rect.colliderect(wall_rect):
+            return True
+        
+    for player in others:
+        player_rect = pygame.Rect(player["x"], player["y"],
+                                  TANK_WIDTH, TANK_HEIGHT)
+        if tank_rect.colliderect(player_rect):
+            return True
+    return False
+#------------------------------------------------------------------------------
+
 # Gameplay loop.
 running = True
 while running:
@@ -209,11 +265,12 @@ while running:
 
     # Tests to make sure the client is connected. Closes the application if
     # it couldn't connect.
-    try:
-        client_player.sendall((json.dumps(tank_player) + "\n").encode())
-    except Exception as error:
-        print("Connection error:", error)
-        running = False
+    if time.time() - last_respawn_time > 0.5:
+        try:
+            client_player.sendall((json.dumps(tank_player) + "\n").encode())
+        except Exception as error:
+            print("Connection error:", error)
+            running = False
 
     # Game Functions.
     player_movement()
@@ -222,6 +279,10 @@ while running:
     screen.fill("tan")
     pygame.mouse.set_cursor(cursor)
     pygame.draw.rect(screen, ("Black"), (0,0,WINDOW_WIDTH, WINDOW_HEIGHT), 10)
+
+    for wall in walls:
+        pygame.draw.rect(screen, (100, 100, 100), (wall["x"], wall["y"],
+                                               wall["w"], wall["h"]))
 
     # Draw other players.
     for player in others:
@@ -264,29 +325,6 @@ while running:
         else:
             screen.blit(explosion_img, (exp["x"], exp["y"]))
 
-    # Check Health
-    if player_health.hp <= 0:
-        screen.blit(explosion_img, (tank_player["x"] - 25, 
-                                    tank_player["y"] - 25))
-        
-        pygame.time.delay(1500)
-        pygame.display.flip()
-
-        player_health.hp = player_health.max_hp
-        tank_player["x"] = random.randint(50, WINDOW_WIDTH - 50)
-        tank_player["y"] = random.randint(50, WINDOW_HEIGHT - 50)
-
-
-
-
-        # explosions.append({
-        #     "x": tank_player["x"] + TANK_WIDTH//2 - EXPLOSION_SIZE[0]//2,
-        #     "y": tank_player["y"] + TANK_HEIGHT//2 - EXPLOSION_SIZE[1]//2,
-        #     "time": time.time()
-        # })
-
-        # tank_player["x"], tank_player["y"] = 250, 200
-        # player_health.hp = player_health.max_hp
     pygame.display.flip()
 
     # Limits to 60fps

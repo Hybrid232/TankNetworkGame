@@ -1,9 +1,12 @@
 {
     "cSpell.words": [
         "blit",
+        "colliderect",
         "Emmitt",
+        "lerp",
         "MOUSEBUTTONDOWN",
         "pygame",
+        "respawn",
         "REUSEADDR"
     ]
 }
