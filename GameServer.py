@@ -20,11 +20,11 @@ EXPLOSION_SIZE = (50, 50)
 # Activates the socket server.
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind((HOST, PORT))  # Sets the server address to the HOST and PORT variables.
+server.bind((HOST, PORT)) # Sets the server address to the HOST and PORT.
 server.listen()  # Listening for the client server's input.
 
 
-def generate_walls(num_walls=8):
+def generate_walls(num_walls=6):
     walls = []
     for _ in range(num_walls):
         x = random.randint(50, WINDOW_WIDTH - 150)
@@ -78,7 +78,8 @@ def client_handling(connection, addr, client_id):
                         if "x" in msg and "y" in msg:
                             p = clients[connection]
 
-                            if "respawn_time" not in p or time.time() - p["respawn_time"] > 0.5:
+                            if "respawn_time" not in p or time.time() - \
+                            p["respawn_time"] > 0.5:
                                 p["x"] = msg["x"]
                                 p["y"] = msg["y"]
                                 
@@ -113,24 +114,29 @@ def client_handling(connection, addr, client_id):
                         bullets.remove(bullet)
                         continue
                     
-#----------------------------------------------------------------------------------------#
                     # Bullet hit's player functions.
                     for c, player in clients.items():
                         if player["id"] == bullet["owner_id"]:
                             continue
-                        if (player["x"] < bullet["x"] < player["x"] + TANK_WIDTH and
-                            player["y"] < bullet["y"] < player["y"] + TANK_HEIGHT):
+                        if (player["x"] < bullet["x"] < player["x"] 
+                            + TANK_WIDTH and 
+                            player["y"] < bullet["y"] < player["y"] 
+                            + TANK_HEIGHT):
 
                             player["hp"] -= 10
                             if player["hp"] < 0:
                                 player["hp"] = 0
 
-                            print(f"💥 Player {player["id"]} hit by Player {bullet["owner_id"]}")
+                            print(f"💥 Player {player["id"]} \
+                                  hit by Player {bullet["owner_id"]}")
                             bullets.remove(bullet)
                             if player["hp"] <= 0:
                                 explosions.append({
-                                    "x": player["x"] + TANK_WIDTH//2 - EXPLOSION_SIZE[0]//2,
-                                    "y": player["y"] + TANK_HEIGHT//2 - EXPLOSION_SIZE[1]//2,
+                                    "x": player["x"] + TANK_WIDTH//2
+                                      - EXPLOSION_SIZE[0]//2,
+                                    "y": player["y"] + TANK_HEIGHT//2
+                                      - EXPLOSION_SIZE[1]//2,
+
                                     "time": time.time()
                                 })
                                 # mark player for delayed respawn
@@ -140,7 +146,8 @@ def client_handling(connection, addr, client_id):
             
             # Delayed Respawn Handling.
             for player in clients.values():
-                if player.get("pending_respawn") and time.time() > player["respawn_time"]:
+                if player.get("pending_respawn") and time.time() \
+                > player["respawn_time"]:
                     player["x"] = random.randint(50, WINDOW_WIDTH - 50)
                     player["y"] = random.randint(50, WINDOW_HEIGHT - 50)
                     player["hp"] = 30
@@ -148,7 +155,8 @@ def client_handling(connection, addr, client_id):
             
                            
             current_time = time.time()
-            explosions[:] = [exp for exp in explosions if current_time - exp["time"] < 1.0]
+            explosions[:] = [exp for exp in explosions if current_time
+                             - exp["time"] < 1.0]
         
             # Sends game info to client.
             with lock:

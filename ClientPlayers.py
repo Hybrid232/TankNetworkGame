@@ -109,8 +109,10 @@ def receive_thread():
                    
                     for p in msg.get("players", []):
                         if p.get("id") == my_id:
-                            tank_player["x"] = lerp(tank_player["x"], p["x"], 0.2) 
-                            tank_player["y"] = lerp(tank_player["y"], p["y"], 0.2)
+                            tank_player["x"] = lerp(tank_player["x"], 
+                                                              p["x"], 0.2) 
+                            tank_player["y"] = lerp(tank_player["y"], 
+                                                              p["y"], 0.2)
                             player_health.hp = p.get("hp", 30)
 
                         else:
@@ -314,8 +316,10 @@ while running:
     bar_x = tank_player["x"]
     bar_y = tank_player["y"] - 15
 
-    pygame.draw.rect(screen, ("Gray"), (bar_x, bar_y, TANK_WIDTH , bar_height ))
-    pygame.draw.rect(screen, ("Dark Green"), (bar_x, bar_y, bar_width, bar_height))
+    pygame.draw.rect(screen, ("Gray"), 
+                    (bar_x, bar_y, TANK_WIDTH , bar_height ))
+    pygame.draw.rect(screen, ("Dark Green"), 
+                    (bar_x, bar_y, bar_width, bar_height))
 
     # Draws Explosion
     current_time = time.time()
