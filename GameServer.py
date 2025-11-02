@@ -8,7 +8,9 @@ import pygame
 # Host and Port numbers.
 # 0.0.0.0 binds to all interfaces
 # 192.168.1.45 will bind to this specific LAN IP 
-HOST = "0.0.0.0" 
+
+HOST = "127.0.0.1"
+# HOST = "0.0.0.0" 
 PORT = 5592
 
 WINDOW_WIDTH = 700
