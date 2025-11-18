@@ -4,10 +4,11 @@ import pygame
 import json
 import time
 import random
+import math
 
 HOST = "127.0.0.1"
 # BYU-I Lan Server: 10.244.53.130
-#HOST = input("Enter the server IP to connect (LAN IP of host): ").strip()
+# HOST = input("Enter the server IP to connect (LAN IP of host): ").strip()
 PORT = 5592
 
 # Opens the server for the client.
@@ -56,17 +57,19 @@ WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 700
 
 # Tank Size.
-TANK_WIDTH = 45
-TANK_HEIGHT = 30
+TANK_WIDTH = 50
+TANK_HEIGHT = 50
 
 # Gameplay Displays.
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption("Multiplayer Tank Game")
+pygame.display.set_caption("Tanks Alot")
 clock = pygame.time.Clock()
 dt = 0
 cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_CROSSHAIR) 
 
 # Images.
+green_tank = pygame.image.load("Images/green_tank.png")
+green_tank = pygame.transform.scale(green_tank, (TANK_WIDTH, TANK_HEIGHT))
 explosion_img = pygame.image.load("Images/tank_explosion.jpg").convert_alpha()
 EXPLOSION_SIZE = (50, 50)
 explosion_img = pygame.transform.scale(explosion_img, EXPLOSION_SIZE)
@@ -192,12 +195,18 @@ def player_fire(mouse_x, mouse_y):
         "y": tank_player["y"] + TANK_HEIGHT // 2,
         "vx": 0,
         "vy": 0,
-        "owner_id": my_id
+        "owner_id": my_id,
+        "ricocheted": False,
+        "bounces": 4,
+
     }
 
     #
     dx = mouse_x - (tank_player["x"] + TANK_WIDTH // 2)
     dy = mouse_y - (tank_player["y"] + TANK_HEIGHT // 2)
+   
+
+
     distance = (dx**2 + dy**2)**0.5
     if distance == 0:
         return
@@ -294,21 +303,26 @@ while running:
         # Draw Health Bar for other players.
         other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
         other_health.hp = player.get("hp", 30)
-        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 45)
+        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 50)
 
     # Draw current player.
-    pygame.draw.rect(screen, (0,225,0), 
-                     (tank_player["x"], tank_player["y"],
-                     TANK_WIDTH, TANK_HEIGHT))
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    dx = mouse_x - (tank_player["x"] + TANK_WIDTH//2)
+    dy = mouse_y - (tank_player["y"] + TANK_HEIGHT//2)
+    angle = -math.degrees(math.atan2(dy,dx))
+    rotated_tank = pygame.transform.rotate(green_tank, angle)
+
+    rect = rotated_tank.get_rect(center=(tank_player["x"] + TANK_WIDTH//2, tank_player["y"] + TANK_HEIGHT//2))
+    screen.blit(rotated_tank, rect.topleft)
     
     # Draws the Health Bar for the current player.
     player_health.draw(screen, tank_player["x"],
-                        tank_player["y"] + TANK_WIDTH - 65)
+                        tank_player["y"] + TANK_WIDTH - 75)
 
     # Draw Bullets
     for b in bullets:
         pygame.draw.circle(screen, ("Black"), (int(b["x"]), int(b["y"])), 5)
-
+        
     # Shows recharge bar below the player.
     cool_down_ratio = min((time.time() - last_shot_time) / shot_cool_down, 1.0)
     bar_width = int(TANK_WIDTH * cool_down_ratio)
