@@ -31,6 +31,8 @@ I found these websites useful in developing this software:
 * [Python Sockets Explained](https://www.youtube.com/watch?v=bwTAVGg_kVs)
 * [Python Sockets Guide](https://realpython.com/python-sockets/#echo-client-and-server)
 * [Pygame Documentation](https://www.pygame.org/docs)
+* [Pygame Physics] (https://www.youtube.com/watch?v=kszA6-RhaXI&pp=ygUmcHlnYW1lIGJ1bGxldCBib3VuY2Ugb2ZmIHdhbGwgdHV0b3JpYWw%3D)
+* []
 
 ## Future Work
 

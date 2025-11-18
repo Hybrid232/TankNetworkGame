@@ -6,6 +6,7 @@
         "lerp",
         "MOUSEBUTTONDOWN",
         "pygame",
+        "rects",
         "respawn",
         "REUSEADDR"
     ]
