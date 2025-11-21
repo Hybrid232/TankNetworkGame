@@ -53,8 +53,8 @@ pygame.init()
 
 # Window Information.
 BORDER_THICKNESS = 10
-WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 700
+WINDOW_WIDTH = 1400
+WINDOW_HEIGHT = 790
 
 # Tank Size.
 TANK_WIDTH = 50
@@ -68,6 +68,12 @@ dt = 0
 cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_CROSSHAIR) 
 
 # Images.
+tank_sprites = [
+    pygame.transform.scale(pygame.image.load("Images/green_tank.png"), (TANK_WIDTH, TANK_HEIGHT)),
+    pygame.transform.scale(pygame.image.load("Images/red_tank.png"), (TANK_WIDTH, TANK_HEIGHT)),
+    pygame.transform.scale(pygame.image.load("Images/blue_tank.png"), (TANK_WIDTH, TANK_HEIGHT)),
+    pygame.transform.scale(pygame.image.load("Images/yellow_tank.png"), (TANK_WIDTH, TANK_HEIGHT))
+]
 green_tank = pygame.image.load("Images/green_tank.png")
 green_tank = pygame.transform.scale(green_tank, (TANK_WIDTH, TANK_HEIGHT))
 explosion_img = pygame.image.load("Images/tank_explosion.jpg").convert_alpha()
@@ -76,7 +82,10 @@ explosion_img = pygame.transform.scale(explosion_img, EXPLOSION_SIZE)
 EXPLOSION_DURATION = 0.5
 
 # Lists and dictionaries.
-tank_player = {"x": 250, "y": 200}
+tank_player = {
+    "x": 250,
+    "y": 200,
+    "spawn_protect_time": 0}
 others = []
 bullets = []
 explosions = []
@@ -87,7 +96,7 @@ walls = [
 
 # Shooting Cool down Variables.
 last_shot_time = 0
-shot_cool_down = 1
+shot_cool_down = 0.5
 last_respawn_time = 0
 
 #------------------------------------------------------------------------------
@@ -112,22 +121,44 @@ def receive_thread():
                    
                     for p in msg.get("players", []):
                         if p.get("id") == my_id:
-                            tank_player["x"] = lerp(tank_player["x"], 
-                                                              p["x"], 0.2) 
-                            tank_player["y"] = lerp(tank_player["y"], 
-                                                              p["y"], 0.2)
+                            my_player = p
+                            my_spawn_slot = p["spawn_slot"]
+                            server_x, server_y = p["x"], p["y"]
+
+                            tank_player["spawn_slot"] = p["spawn_slot"]
+
+                            tank_player["spawn_protect_time"] = \
+                            p.get("spawn_protect_time", 0)
+
                             player_health.hp = p.get("hp", 30)
+
+                            if time.time() > tank_player["spawn_protect_time"]:
+
+                                tank_player["x"] = lerp(tank_player["x"], 
+                                                              server_x, 0.2) 
+                                tank_player["y"] = lerp(tank_player["y"], 
+                                                              server_y, 0.2)
+                            else:
+                                tank_player["x"], tank_player["y"] = server_x, server_y
 
                         else:
                             found = False
                             for o in others:
                                 if o["id"] == p["id"]:
-                                    o["x"], o["y"], o["hp"] = \
-                                    p["x"], p["y"], p["hp"]
+                                    o["x"] = p["x"]
+                                    o["y"] = p["y"]
+                                    o["hp"] = p["hp"]
+                                    o["spawn_slot"] = p["spawn_slot"] 
                                     found = True
                                     break
                                 if not found:
-                                    others.append(p) 
+                                     others.append({
+                                        "id": p["id"],
+                                        "x": p["x"],
+                                        "y": p["y"],
+                                        "hp": p["hp"],
+                                        "spawn_slot": p["spawn_slot"] 
+                                    })
                     
                     bullets = msg.get("bullets", [])
                     walls = msg.get("walls", [])
@@ -150,6 +181,12 @@ def lerp(a, b, t):
 
 # Player Movement.-------------------------------------------------------------
 def player_movement():
+    current_time = time.time()
+    if current_time < tank_player.get("spawn_protect_time", 0):
+        # Cannot move while spawning again!
+        return
+
+
     dx = 0
     dy = 0
     player_speed = 150
@@ -212,7 +249,7 @@ def player_fire(mouse_x, mouse_y):
         return
     
     # Bullet Speed.
-    speed = 500
+    speed = 800
 
     bullet["vx"] = dx / distance * speed
     bullet["vy"] = dy / distance * speed
@@ -278,7 +315,12 @@ while running:
     # it couldn't connect.
     if time.time() - last_respawn_time > 0.5:
         try:
-            client_player.sendall((json.dumps(tank_player) + "\n").encode())
+            if time.time() > tank_player.get("spawn_protect_time", 0):
+                client_player.sendall((json.dumps({
+                    "x": tank_player["x"],
+                    "y": tank_player["y"]
+                }) + "\n").encode())
+                    
         except Exception as error:
             print("Connection error:", error)
             running = False
@@ -295,29 +337,43 @@ while running:
         pygame.draw.rect(screen, (100, 100, 100), (wall["x"], wall["y"],
                                                wall["w"], wall["h"]))
 
+    my_sprite = tank_sprites[tank_player.get("spawn_slot", 0)]
+
     # Draw other players.
     for player in others:
-        pygame.draw.rect(screen, (255, 0, 0), 
-                         (player["x"], player["y"], TANK_WIDTH, TANK_HEIGHT))
+        sprite = tank_sprites[player.get("spawn_slot", 0)]
+
+        dx = mouse_x = (player["x"] + TANK_WIDTH//2)
+        dy = mouse_y = (player["y"] + TANK_HEIGHT//2)
+
+        angle = -math.degrees(math.atan2(dy, dx))
+        rotated_sprite = pygame.transform.rotate(sprite, angle)
+        rect = rotated_sprite.get_rect(center=
+                        (player["x"] + TANK_WIDTH//2,
+                         player["y"] + TANK_HEIGHT//2))
         
         # Draw Health Bar for other players.
         other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
         other_health.hp = player.get("hp", 30)
         other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 50)
 
+        screen.blit(rotated_sprite, rect.topleft)
+
     # Draw current player.
     mouse_x, mouse_y = pygame.mouse.get_pos()
     dx = mouse_x - (tank_player["x"] + TANK_WIDTH//2)
     dy = mouse_y - (tank_player["y"] + TANK_HEIGHT//2)
     angle = -math.degrees(math.atan2(dy,dx))
-    rotated_tank = pygame.transform.rotate(green_tank, angle)
+    rotated_tank = pygame.transform.rotate(my_sprite, angle)
 
-    rect = rotated_tank.get_rect(center=(tank_player["x"] + TANK_WIDTH//2, tank_player["y"] + TANK_HEIGHT//2))
+    rect = rotated_tank.get_rect(center=
+                    (tank_player["x"] + TANK_WIDTH//2,
+                     tank_player["y"] + TANK_HEIGHT//2))
     screen.blit(rotated_tank, rect.topleft)
     
     # Draws the Health Bar for the current player.
     player_health.draw(screen, tank_player["x"],
-                        tank_player["y"] + TANK_WIDTH - 75)
+                        tank_player["y"] + TANK_HEIGHT - 70)
 
     # Draw Bullets
     for b in bullets:

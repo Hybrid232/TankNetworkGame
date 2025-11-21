@@ -29,6 +29,7 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11/17/2025|  2:00 PM |  MTG   | Planning Meeting                           |   1:00      |
 |11/17/2025|  2:15 PM |  IM    | Set up Projects and added goals            |   0:30      |
 |11/18/2025| 10:29 AM |  IM    | Got ricochet to work and added tank colors |   3:27      |
+|11/20/2025|  8:05 AM |  IM    | Got ricochet to work and added tank colors |   3:27      |
 
 
 
