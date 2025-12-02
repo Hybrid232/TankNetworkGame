@@ -29,7 +29,13 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11/17/2025|  2:00 PM |  MTG   | Planning Meeting                           |   1:00      |
 |11/17/2025|  2:15 PM |  IM    | Set up Projects and added goals            |   0:30      |
 |11/18/2025| 10:29 AM |  IM    | Got ricochet to work and added tank colors |   3:27      |
-|11/20/2025|  8:05 AM |  IM    | Got ricochet to work and added tank colors |   3:27      |
+|11/19/2025|  2:00 PM |  TP    | Started networking script, and Photon      |   1:00      |
+|11/20/2025|  8:05 AM |  IM    | Worked on the respawn                      |   1:00      |
+|11/20/2025|  2:05 PM |  IM    | Switched respawn to be specific corners    |   1:07      |
+|11/20/2025|  9:45 PM |  IM    | All 4 players show with their color tanks  |   1:00      |
+|11/21/2025|  9:25 AM |  IM    | Player rotation is in-sync                 |   0:40      |
+|11/21/2025|  2:00 PM |  MTG   | Stand-Up Meeting                           |   1:00      |
+
 
 
 

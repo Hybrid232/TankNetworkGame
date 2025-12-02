@@ -6,7 +6,7 @@ import random
 import pygame
 
 # Server settings
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 5592
 
 # Game window and tank constants
@@ -40,31 +40,57 @@ lock = threading.Lock()
 next_id = 1
 
 # Generate walls
-def generate_walls(num_walls=16, min_distance=45):
+def generate_walls(num_walls=30, padding=35, corner_margin=150):
     walls = []
 
-    def rects_overlap(r1, r2, padding=0):
-        return not(
-            r1["x"] + r1["w"] + padding < r2["x"] or
-            r1["x"] > r2["x"] + r2["w"] + padding or
-            r1["y"] + r1["h"] + padding < r2["y"] or
-            r1["y"] > r2["y"] + r2["h"] + padding
-        )
+    grid_rows = 4
+    grid_cols = 4
+    cell_width = WINDOW_WIDTH // grid_cols
+    cell_height = WINDOW_HEIGHT // grid_rows
 
-    attempts = 0
-    max_attempts = 1000
+    for _ in range(num_walls):
+        placed = False
+        attempts = 0
 
-    while len(walls) < num_walls and attempts < max_attempts:
-        attempts += 1
-        x = random.randint(20, WINDOW_WIDTH - 180)
-        y = random.randint(20, WINDOW_HEIGHT - 180)
-        w = random.randint(100, 120)
-        h = random.randint(10, 100)
-        diagonal = random.choice([True, False])
-        wall = {"x": x, "y": y, "w": w, "h": h, "angle": 45 if diagonal else 0}
-        overlap = any(rects_overlap(wall, w2, padding=min_distance) for w2 in walls)
-        if not overlap:
-            walls.append(wall)
+        while not placed and attempts < 50:
+            attempts += 1
+
+            # Pick a random grid cell
+            row = random.randint(0, grid_rows - 1)
+            col = random.randint(0, grid_cols - 1)
+
+            x = col * cell_width + random.randint(10, cell_width - 110)
+            y = row * cell_height + random.randint(10, cell_height - 110)
+            w = random.randint(60, 190)
+            h = random.randint(70, 140)
+
+            corners = [
+                (0, 0),
+                (WINDOW_WIDTH - TANK_WIDTH, 0),
+                (0, WINDOW_HEIGHT - TANK_HEIGHT),
+                (WINDOW_WIDTH - TANK_WIDTH, WINDOW_HEIGHT - TANK_HEIGHT)
+            ]
+            too_close = False
+            for cx, cy in corners:
+                if (x + w + corner_margin > cx and x < cx + TANK_WIDTH + corner_margin and
+                    y + h + corner_margin > cy and y < cy + TANK_HEIGHT + corner_margin):
+                    too_close = True
+                    break
+            if too_close:
+                continue
+
+            # Check for overlap
+            overlap = False
+            for w2 in walls:
+                if (x + w + padding > w2["x"] and x < w2["x"] + w2["w"] + padding and
+                    y + h + padding > w2["y"] and y < w2["y"] + w2["h"] + padding):
+                    overlap = True
+                    break
+
+            if not overlap:
+                walls.append({"x": x, "y": y, "w": w, "h": h})   
+                placed = True
+
     return walls
 
 walls = generate_walls()
@@ -113,6 +139,7 @@ def client_handling(connection, addr, client_id):
             "hp": 30,
             "spawn_slot": slot,
             "spawn_protect_time": time.time() + 1.0
+
         }
 
     buffer = ""
@@ -136,16 +163,21 @@ def client_handling(connection, addr, client_id):
                     continue
 
                 with lock:
+                    if connection not in clients:
+                        continue
+
                     # Player movement update
                     if "x" in msg and "y" in msg:
                         p = clients[connection]
                         if time.time() > p.get("spawn_protect_time", 0):
-                            p["x"] = msg["x"]
-                            p["y"] = msg["y"]
+                            p["x"] = msg.get("x", p["x"])
+                            p["y"] = msg.get("y", p["y"])
+                            p["angle"] = msg.get("angle", p.get("angle", 0))
 
                     # Bullet creation
                     elif msg.get("type") == "bullet":
-                        bullets.append(msg["data"])
+                        if "data" in msg:
+                            bullets.append(msg["data"])
 
     with lock:
         if connection in clients:
@@ -158,15 +190,27 @@ def client_handling(connection, addr, client_id):
 def broadcast_state():
     while True:
         with lock:
+            players_list = []
+            for data in clients.values():
+                players_list.append({
+                    "id": data["id"], 
+                    "x": data["x"],
+                    "y": data["y"],
+                    "hp": data["hp"],
+                    "spawn_slot": data["spawn_slot"],
+
+                    "spawn_protect_time": data.get("spawn_protect_time", 0)
+                })
             state = {
-                "players": list(clients.values()),
+                "players": [client_data for client_data in clients.values()],
                 "bullets": bullets,
                 "walls": walls,
                 "explosions": explosions
             }
+            msg = json.dumps(state) + "\n"
             for c in list(clients.keys()):
                 try:
-                    c.sendall((json.dumps(state) + "\n").encode())
+                    c.sendall(msg.encode())
                 except:
                     c.close()
                     if c in clients:
@@ -221,7 +265,8 @@ def game_tick():
                 # Player collision
                 for player in clients.values():
                     if player["id"] == bullet["owner_id"]:
-                        continue
+                        if time.time() - bullet.get("spawn_time", 0) < 0.1:
+                            continue
                     if (player["x"] < bullet["x"] < player["x"] + TANK_WIDTH and
                         player["y"] < bullet["y"] < player["y"] + TANK_HEIGHT):
                         player["hp"] -= 10
@@ -253,19 +298,25 @@ def game_tick():
 
         time.sleep(delta)
 
-# CLIENT ACCEPT LOOP 
+# START THREADS 
 
-def accept_clients():
-    global next_id
-    print(f"Server running on {HOST}:{PORT}")
-    while True:
+def accept_loop():
+     global next_id
+     while True:
         conn, addr = server.accept()
         client_id = next_id
         next_id += 1
-        threading.Thread(target=client_handling, args=(conn, addr, client_id), daemon=True).start()
 
-# START THREADS 
+        threading.Thread(
+            target=client_handling, 
+            args=(conn, addr, client_id), 
+            daemon=True
+        ).start()
 
-threading.Thread(target=game_tick, daemon=True).start()
-threading.Thread(target=broadcast_state, daemon=True).start()
-accept_clients()
+if __name__ == "__main__":
+    print("\nStarted Server on ...")
+
+    threading.Thread(target=game_tick, daemon=True).start()
+    threading.Thread(target=broadcast_state, daemon=True).start()
+
+    accept_loop()

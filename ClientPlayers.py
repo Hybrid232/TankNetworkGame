@@ -3,50 +3,116 @@ import threading
 import pygame 
 import json
 import time
-import random
 import math
+import subprocess
+import sys
 
-HOST = "127.0.0.1"
-# BYU-I Lan Server: 10.244.53.130
-# HOST = input("Enter the server IP to connect (LAN IP of host): ").strip()
-PORT = 5592
+def launch_local_server():
+    print("Starting local server...\n")
+    subprocess.Popen([sys.executable, "GameServer.py"])
+    time.sleep(1.0)
 
-# Opens the server for the client.
-client_player = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Local server started!")
 
-# Takes 5 seconds for program to develop and connect.
-client_player.settimeout(5.0) 
- 
-# Attempts to connect, and closes program if connection failed.
-try:
-    client_player.connect((HOST, PORT))
-except Exception as error:
-    print("Failed to connect to server:", error)
-    client_player.close()
-    exit()
+def start_server():
+    HOST = "127.0.0.1"
+    PORT = 5592
+    # BYU-I Lan Server: 10.244.53.130
 
-buffer = ""
-data = None
-for attempt in range(5):
+    server_thread = threading.Thread(target=launch_local_server, 
+                                     args=(HOST, PORT),
+                                     daemon=True
+                                     )
+    server_thread.start()
+    
+    print(f"Server started on {HOST}:{PORT}")
+
+    connect_to_server(HOST, PORT)
+
+
+def connect_to_server(HOST, PORT):
+    global client_player, my_id
+    client_player = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # Takes 5 seconds for program to develop and connect.
+    client_player.settimeout(5.0) 
+
+    # Opens the server for the client.
     try:
-        chunk = client_player.recv(4096).decode()
-        if not chunk:
-            continue
-        buffer += chunk
-        if "\n" in buffer:
-            data, buffer = buffer.split("\n", 1) 
-            break
-    except socket.timeout:
-        continue
+        client_player.connect((HOST, PORT))
     except Exception as error:
-        print(f"Error while receiving ID: {error}")
+        print("\nFailed to connect to server:", error)
         client_player.close()
         exit()
 
-my_id = json.loads(data)["id"]
-print(f"Connected as player ID {my_id}")
-client_player.settimeout(0.1)
+    # Attempts to connect, and closes program if connection failed.
+    buffer = ""
+    data = None
+    for attempt in range(5):
+        try:
+            chunk = client_player.recv(4096).decode()
+            if not chunk:
+                continue
+            buffer += chunk
+            if "\n" in buffer:
+                data, buffer = buffer.split("\n", 1) 
+                break
+        except socket.timeout:
+            continue
+        except Exception as error:
+            print(f"\nError while receiving ID: {error}")
+            client_player.close()
+            exit()
+
+    
+    my_id = json.loads(data)["id"]
+    print(f"\nConnected as player ID {my_id}")
+    client_player.settimeout(0.1)
+
 #------------------------------------------------------------------------------
+
+class Button():
+    def __init__(self, x, y, w, h, text, font, bg_color, hover_color, click_color, txt_color):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.text = text
+        self.font = font
+        self.bg_color = bg_color
+        self.hover_color = hover_color
+        self.click_color = click_color
+        self.txt_color = txt_color
+
+
+        self.is_hovered = False
+        self.is_pressed = False
+        self.was_pressed = False
+
+    def update(self, mouse_pos, mouse_pressed):
+        self.is_hovered = self.rect.collidepoint(mouse_pos)
+
+        self.is_pressed = self.is_hovered and mouse_pressed
+
+
+    def draw(self, surface):
+        color = self.bg_color
+
+        if self.is_pressed:
+            color = self.click_color
+        elif self.is_hovered:
+            color = self.hover_color
+
+
+        pygame.draw.rect(surface, color, self.rect, border_radius=6)
+        text_surf = self.font.render(self.text, True, self.txt_color)
+        text_rect = text_surf.get_rect(center=self.rect.center)
+        surface.blit(text_surf, text_rect)
+
+    def is_clicked(self, mouse_pressed):
+        clicked = self.is_hovered and mouse_pressed and not self.was_pressed
+        self.was_pressed = mouse_pressed
+        return clicked
+    
+
+
 
 # Initialize Pygame.
 pygame.init()
@@ -74,12 +140,35 @@ tank_sprites = [
     pygame.transform.scale(pygame.image.load("Images/blue_tank.png"), (TANK_WIDTH, TANK_HEIGHT)),
     pygame.transform.scale(pygame.image.load("Images/yellow_tank.png"), (TANK_WIDTH, TANK_HEIGHT))
 ]
-green_tank = pygame.image.load("Images/green_tank.png")
-green_tank = pygame.transform.scale(green_tank, (TANK_WIDTH, TANK_HEIGHT))
+background_img = pygame.transform.scale(pygame.image.load("Images/background.png"), (WINDOW_WIDTH, WINDOW_HEIGHT))
+wall_img = pygame.image.load("Images/wall_img.png").convert_alpha()
+
 explosion_img = pygame.image.load("Images/tank_explosion.jpg").convert_alpha()
 EXPLOSION_SIZE = (50, 50)
 explosion_img = pygame.transform.scale(explosion_img, EXPLOSION_SIZE)
 EXPLOSION_DURATION = 0.5
+
+font = pygame.font.SysFont(None, 40)
+
+# Menu Buttons
+start_button = Button(600, 200, 200, 60, "Start Server", font, 
+                      bg_color= (0, 200, 0), 
+                      hover_color=(0, 225, 0),
+                      click_color=(0, 150, 0),
+                      txt_color=(255, 255, 255))
+join_button = Button(600, 300, 200, 60, "Join Server", font, 
+                      bg_color= (0, 0, 200), 
+                      hover_color=(0, 0, 225),
+                      click_color=(0, 0, 150),
+                      txt_color=(255, 255, 255))
+quit_button = Button(600, 500, 200, 60, "Quit Game", font, 
+                     bg_color= (200, 0, 0), 
+                     hover_color=(255, 0, 0),
+                     click_color=(150, 0, 0),
+                     txt_color=(255, 255, 255))
+
+buttons = [start_button, join_button, quit_button]
+
 
 # Lists and dictionaries.
 tank_player = {
@@ -100,16 +189,21 @@ shot_cool_down = 0.5
 last_respawn_time = 0
 
 #------------------------------------------------------------------------------
-buffer = ""
 # Receives the information from the server to display for the Clients.
 def receive_thread():
-    global others, bullets, buffer, walls
+    global client_player, others, bullets, buffer, walls       
+    buffer = ""
     while True:
         try:
+            if "client_player" not in globals():
+                time.sleep(0.1)
+                continue
+
             data = client_player.recv(4096).decode()
             if not data:
-                print("Server disconnected")
+                print("Server disconnected\n\n")
                 continue
+
             buffer += data
 
             while "\n" in buffer:
@@ -121,34 +215,28 @@ def receive_thread():
                    
                     for p in msg.get("players", []):
                         if p.get("id") == my_id:
-                            my_player = p
-                            my_spawn_slot = p["spawn_slot"]
-                            server_x, server_y = p["x"], p["y"]
-
                             tank_player["spawn_slot"] = p["spawn_slot"]
-
                             tank_player["spawn_protect_time"] = \
                             p.get("spawn_protect_time", 0)
-
                             player_health.hp = p.get("hp", 30)
-
+                            
+                            server_x, server_y = p["x"], p["y"]
                             if time.time() > tank_player["spawn_protect_time"]:
-
                                 tank_player["x"] = lerp(tank_player["x"], 
                                                               server_x, 0.2) 
                                 tank_player["y"] = lerp(tank_player["y"], 
                                                               server_y, 0.2)
                             else:
                                 tank_player["x"], tank_player["y"] = server_x, server_y
+                            tank_player["angle"] = p.get("angle", 0)
 
                         else:
                             found = False
                             for o in others:
                                 if o["id"] == p["id"]:
-                                    o["x"] = p["x"]
-                                    o["y"] = p["y"]
-                                    o["hp"] = p["hp"]
-                                    o["spawn_slot"] = p["spawn_slot"] 
+                                    o["x"], o["y"], o["hp"], o["angle"] = \
+                                    p["x"], p["y"], p["hp"], p.get("angle", 0)
+                
                                     found = True
                                     break
                                 if not found:
@@ -157,7 +245,8 @@ def receive_thread():
                                         "x": p["x"],
                                         "y": p["y"],
                                         "hp": p["hp"],
-                                        "spawn_slot": p["spawn_slot"] 
+                                        "spawn_slot": p["spawn_slot"],
+                                        "angle": p.get("angle", 0)
                                     })
                     
                     bullets = msg.get("bullets", [])
@@ -165,16 +254,15 @@ def receive_thread():
                     explosions = msg.get("explosions", [])
 
                 except json.JSONDecodeError as error:
-                    print(f"JSON error in receive_thread function: \
-                           {error}, line={line}")
+                    print(f"\nJSON error in receive_thread function: {error}, line={line}")
 
         except socket.timeout:
             continue
         except Exception as error:
-            print(f"Receive thread connection error: {error}")
+            print(f"\nReceive thread connection error: {error}")
             break
 
-threading.Thread(target=receive_thread, daemon=True).start()
+
 
 def lerp(a, b, t):
     return a + (b - a) * t
@@ -235,6 +323,7 @@ def player_fire(mouse_x, mouse_y):
         "owner_id": my_id,
         "ricocheted": False,
         "bounces": 4,
+        "spawn_time": time.time(),
 
     }
 
@@ -254,12 +343,17 @@ def player_fire(mouse_x, mouse_y):
     bullet["vx"] = dx / distance * speed
     bullet["vy"] = dy / distance * speed
 
+
+    spawn_offset = TANK_WIDTH // 2
+    bullet["x"] += dx / distance * spawn_offset
+    bullet["y"] += dy / distance * spawn_offset
+
     # Server info to send to all clients.
     try:
         msg = json.dumps({"type": "bullet", "data": bullet}) + "\n"
         client_player.sendall(msg.encode())
     except Exception as error:
-        print("Error sending bullet:", error)
+        print("\nError sending bullet:", error)
 
 # Health bar Class-------------------------------------------------------------
 class HealthBar():
@@ -280,6 +374,9 @@ class HealthBar():
 # Health variable to signify the health bar's width, height, and total HP.
 player_health = HealthBar(w=45, h=7, max_hp=30)
 
+
+threading.Thread(target=receive_thread, daemon=True).start()
+
 #------------------------------------------------------------------------------
 # Wall Collision
 def check_collision(x, y):
@@ -297,112 +394,178 @@ def check_collision(x, y):
             return True
     return False
 #------------------------------------------------------------------------------
+def main_menu():
+    running = True
+    while running:
+        screen.fill((50,50,50))
 
-# Gameplay loop.
-running = True
-while running:
-    # Allows player to press the exit button and close the application.
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        # If user clicks with their mouse, it causes them to shoot from the 
-        # tank to where the mouse was pressed.
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            player_fire(mouse_x, mouse_y)
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()[0]
 
-    # Tests to make sure the client is connected. Closes the application if
-    # it couldn't connect.
-    if time.time() - last_respawn_time > 0.5:
-        try:
-            if time.time() > tank_player.get("spawn_protect_time", 0):
-                client_player.sendall((json.dumps({
-                    "x": tank_player["x"],
-                    "y": tank_player["y"]
-                }) + "\n").encode())
-                    
-        except Exception as error:
-            print("Connection error:", error)
-            running = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
 
-    # Game Functions.
-    player_movement()
-    
-    # Changes background color, then displays it.
-    screen.fill("tan")
-    pygame.mouse.set_cursor(cursor)
-    pygame.draw.rect(screen, ("Black"), (0,0,WINDOW_WIDTH, WINDOW_HEIGHT), 10)
+        # Update buttons
+        for button in buttons:
+            button.update(mouse_pos, mouse_pressed)
+            button.draw(screen)
 
-    for wall in walls:
-        pygame.draw.rect(screen, (100, 100, 100), (wall["x"], wall["y"],
-                                               wall["w"], wall["h"]))
+        # Check clicks
+        if mouse_pressed:
+            if start_button.is_clicked(mouse_pressed):
+                print("Start Server\n")
+                return "START_SERVER"
+            elif join_button.is_clicked(mouse_pressed):
+                print("Join Server Clicked\n")
+                return "JOIN_SERVER"
+            elif quit_button.is_clicked(mouse_pressed):
+                return "QUIT"
 
-    my_sprite = tank_sprites[tank_player.get("spawn_slot", 0)]
+        pygame.display.flip()
+        clock.tick(60)
 
-    # Draw other players.
-    for player in others:
-        sprite = tank_sprites[player.get("spawn_slot", 0)]
 
-        dx = mouse_x = (player["x"] + TANK_WIDTH//2)
-        dy = mouse_y = (player["y"] + TANK_HEIGHT//2)
+def start_gameplay():    
+    # Gameplay loop.
+    global running, dt
 
-        angle = -math.degrees(math.atan2(dy, dx))
-        rotated_sprite = pygame.transform.rotate(sprite, angle)
-        rect = rotated_sprite.get_rect(center=
-                        (player["x"] + TANK_WIDTH//2,
-                         player["y"] + TANK_HEIGHT//2))
+    running = True
+    while running:
+        # Allows player to press the exit button and close the application.
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            # If user clicks with their mouse, it causes them to shoot from the 
+            # tank to where the mouse was pressed.
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                player_fire(mouse_x, mouse_y)
+
+        # Tests to make sure the client is connected. Closes the application if
+        # it couldn't connect.
+        if time.time() - last_respawn_time > 0.5:
+            try:
+                if time.time() > tank_player.get("spawn_protect_time", 0):
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    dx = mouse_x - (tank_player["x"] + TANK_WIDTH//2)
+                    dy = mouse_y - (tank_player["y"] + TANK_HEIGHT//2)
+                    tank_player["angle"] = -math.degrees(math.atan2(dy, dx))
+
+                    # Send position + angle to server
+                    msg = {
+                        "x": tank_player["x"],
+                        "y": tank_player["y"],
+                        "angle": tank_player["angle"]
+                    }
+                    client_player.sendall((json.dumps(msg) + "\n").encode())
+                        
+            except Exception as error:
+                print("\nConnection error:", error)
+                running = False
+
+        # Game Functions.
+        player_movement()
         
-        # Draw Health Bar for other players.
-        other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
-        other_health.hp = player.get("hp", 30)
-        other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 50)
+        # Changes background color, then displays it.
+        screen.blit(background_img, (0, 0))
+        #screen.fill("Dark Green")
+        pygame.mouse.set_cursor(cursor)
+        pygame.draw.rect(screen, ("Black"), (0,0,WINDOW_WIDTH, WINDOW_HEIGHT), 10)
 
-        screen.blit(rotated_sprite, rect.topleft)
+        for wall in walls:
+            scaled_wall = pygame.transform.scale(wall_img, (wall["w"], wall["h"]))
 
-    # Draw current player.
-    mouse_x, mouse_y = pygame.mouse.get_pos()
-    dx = mouse_x - (tank_player["x"] + TANK_WIDTH//2)
-    dy = mouse_y - (tank_player["y"] + TANK_HEIGHT//2)
-    angle = -math.degrees(math.atan2(dy,dx))
-    rotated_tank = pygame.transform.rotate(my_sprite, angle)
+            rect= scaled_wall.get_rect(center=(wall["x"] + wall["w"]//2,
+                                                    wall["y"] + wall["h"]//2))
+            
+            screen.blit(scaled_wall, rect.topleft)
 
-    rect = rotated_tank.get_rect(center=
-                    (tank_player["x"] + TANK_WIDTH//2,
-                     tank_player["y"] + TANK_HEIGHT//2))
-    screen.blit(rotated_tank, rect.topleft)
-    
-    # Draws the Health Bar for the current player.
-    player_health.draw(screen, tank_player["x"],
-                        tank_player["y"] + TANK_HEIGHT - 70)
+        my_sprite = tank_sprites[tank_player.get("spawn_slot", 0)]
 
-    # Draw Bullets
-    for b in bullets:
-        pygame.draw.circle(screen, ("Black"), (int(b["x"]), int(b["y"])), 5)
+        # Draw other players.
+        for player in others:
+            sprite = tank_sprites[player.get("spawn_slot", 0)]
+            angle = player.get("angle", 0)
+
+
+            rotated_sprite = pygame.transform.rotate(sprite, angle)
+            rect = rotated_sprite.get_rect(center=
+                            (player["x"] + TANK_WIDTH//2,
+                            player["y"] + TANK_HEIGHT//2))
+            
+            # Draw Health Bar for other players.
+            other_health = HealthBar(w=TANK_WIDTH, h=5, max_hp=30)
+            other_health.hp = player.get("hp", 30)
+            other_health.draw(screen, player["x"], player["y"] + TANK_HEIGHT - 50)
+
+            screen.blit(rotated_sprite, rect.topleft)
+
+            player["last_x"] = player["x"]
+            player["last_y"] = player["y"]
+
+        # Draw current player.
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        dx = mouse_x - (tank_player["x"] + TANK_WIDTH//2)
+        dy = mouse_y - (tank_player["y"] + TANK_HEIGHT//2)
+        angle = -math.degrees(math.atan2(dy,dx))
+        rotated_tank = pygame.transform.rotate(my_sprite, angle)
+
+        rect = rotated_tank.get_rect(center=
+                        (tank_player["x"] + TANK_WIDTH//2,
+                        tank_player["y"] + TANK_HEIGHT//2))
+        screen.blit(rotated_tank, rect.topleft)
         
-    # Shows recharge bar below the player.
-    cool_down_ratio = min((time.time() - last_shot_time) / shot_cool_down, 1.0)
-    bar_width = int(TANK_WIDTH * cool_down_ratio)
-    bar_height = 5
-    bar_x = tank_player["x"]
-    bar_y = tank_player["y"] - 15
+        # Draws the Health Bar for the current player.
+        player_health.draw(screen, tank_player["x"],
+                            tank_player["y"] + TANK_HEIGHT - 70)
 
-    pygame.draw.rect(screen, ("Gray"), 
-                    (bar_x, bar_y, TANK_WIDTH , bar_height ))
-    pygame.draw.rect(screen, ("Dark Green"), 
-                    (bar_x, bar_y, bar_width, bar_height))
+        # Draw Bullets
+        for b in bullets:
+            pygame.draw.circle(screen, ("Black"), (int(b["x"]), int(b["y"])), 5)
+            
+        # Shows recharge bar below the player.
+        cool_down_ratio = min((time.time() - last_shot_time) / shot_cool_down, 1.0)
+        bar_width = int(TANK_WIDTH * cool_down_ratio)
+        bar_height = 5
+        bar_x = tank_player["x"]
+        bar_y = tank_player["y"] - 15
 
-    # Draws Explosion
-    current_time = time.time()
-    for exp in explosions[:]:
-        if current_time - exp["time"] > EXPLOSION_DURATION:
-            explosions.remove(exp)
-        else:
-            screen.blit(explosion_img, (exp["x"], exp["y"]))
+        pygame.draw.rect(screen, ("Gray"), 
+                        (bar_x, bar_y, TANK_WIDTH , bar_height ))
+        pygame.draw.rect(screen, ("Dark Green"), 
+                        (bar_x, bar_y, bar_width, bar_height))
 
-    pygame.display.flip()
+        # Draws Explosion
+        current_time = time.time()
+        for exp in explosions[:]:
+            if current_time - exp["time"] > EXPLOSION_DURATION:
+                explosions.remove(exp)
+            else:
+                screen.blit(explosion_img, (exp["x"], exp["y"]))
 
-    # Limits to 60fps
-    dt = clock.tick(60) / 1000
+        pygame.display.flip()
 
-pygame.quit()
-client_player.close()
+        # Limits to 60fps
+        dt = clock.tick(60) / 1000
+
+    pygame.quit()
+    client_player.close()
+
+def main():
+    choice = main_menu()
+
+    if choice == "START_SERVER":
+        launch_local_server()
+        start_server()
+        threading.Thread(target=receive_thread, daemon=True).start()
+        start_gameplay()
+    elif choice == "JOIN_SERVER":
+        connect_to_server("127.0.0.1", 5592)
+        start_gameplay()
+    elif choice == "QUIT":
+        pygame.quit()
+        exit()
+
+main()
