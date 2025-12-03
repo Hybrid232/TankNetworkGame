@@ -15,7 +15,7 @@ def launch_local_server():
     print("Local server started!")
 
 def start_server():
-    HOST = "127.0.0.1"
+    HOST = "10.244.53.130"
     PORT = 5592
     # BYU-I Lan Server: 10.244.53.130
 
