@@ -7,7 +7,7 @@ import math
 import subprocess
 import sys
 
-def launch_local_server():
+def launch_local_server(*args):
     print("Starting local server...\n")
     subprocess.Popen([sys.executable, "GameServer.py"])
     time.sleep(1.0)
