@@ -5,10 +5,9 @@
 
 Steps to build and/or run the software:
 
-1. In terminal window run "python GameServer.py" to turn on the server.
-2. In new terminal window, run "python ClientPlayers.py" to activate a client.
-3. Click on the pygame window that pops up.
-4. In new terminal window, run "python ClientPlayers.py" again to add a second client.
+1. Run ONLY ClientPlayers.py file. 
+2. Click "Start Server" button.
+3. Open additional terminal windows and run same file for additional players.
 
 Instructions for using the software:
 
@@ -31,13 +30,14 @@ I found these websites useful in developing this software:
 * [Python Sockets Explained](https://www.youtube.com/watch?v=bwTAVGg_kVs)
 * [Python Sockets Guide](https://realpython.com/python-sockets/#echo-client-and-server)
 * [Pygame Documentation](https://www.pygame.org/docs)
-* [Pygame Physics] (https://www.youtube.com/watch?v=kszA6-RhaXI&pp=ygUmcHlnYW1lIGJ1bGxldCBib3VuY2Ugb2ZmIHdhbGwgdHV0b3JpYWw%3D)
-* []
+* [Pygame Physics](https://www.youtube.com/watch?v=kszA6-RhaXI&pp=ygUmcHlnYW1lIGJ1bGxldCBib3VuY2Ugb2ZmIHdhbGwgdHV0b3JpYWw%3D)
+* [Pygame Main Menu](https://www.youtube.com/watch?v=GMBqjxcKogA&pp=ygUZcHlnYW1lIG1haW4gbWVudSB0dXRvcmlhbA%3D%3D)
+
 
 ## Future Work
 
 The following items I plan to fix, improve, and/or add to this project in the future:
 
-* [x] Sometimes the first client that enters bugs out and closes the client. Just open a new client and it should work. 
-* [x] Sometimes when player dies, they teleport into walls.
-* [x] Explosion sprite never works yet.
+* [x] Start server button also acts as a join server button for other clients.
+* [x] Json files show error but doesn't effect gameplay.
+* [x] Explosion sprite still does not work.
