@@ -15,7 +15,7 @@ def launch_local_server(*args):
     print("Local server started!")
 
 def start_server():
-    HOST = "10.244.53.130"
+    HOST = "127.0.0.1"
     PORT = 5592
     # BYU-I Lan Server: 10.244.53.130
 
@@ -119,8 +119,8 @@ pygame.init()
 
 # Window Information.
 BORDER_THICKNESS = 10
-WINDOW_WIDTH = 1400
-WINDOW_HEIGHT = 790
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 800
 
 # Tank Size.
 TANK_WIDTH = 50
@@ -151,17 +151,17 @@ EXPLOSION_DURATION = 0.5
 font = pygame.font.SysFont(None, 40)
 
 # Menu Buttons
-start_button = Button(600, 200, 200, 60, "Start Server", font, 
+start_button = Button(300, 200, 200, 60, "Start Server", font, 
                       bg_color= (0, 200, 0), 
                       hover_color=(0, 225, 0),
                       click_color=(0, 150, 0),
                       txt_color=(255, 255, 255))
-join_button = Button(600, 300, 200, 60, "Join Server", font, 
+join_button = Button(300, 300, 200, 60, "Join Server", font, 
                       bg_color= (0, 0, 200), 
                       hover_color=(0, 0, 225),
                       click_color=(0, 0, 150),
                       txt_color=(255, 255, 255))
-quit_button = Button(600, 500, 200, 60, "Quit Game", font, 
+quit_button = Button(300, 500, 200, 60, "Quit Game", font, 
                      bg_color= (200, 0, 0), 
                      hover_color=(255, 0, 0),
                      click_color=(150, 0, 0),
